@@ -255,7 +255,7 @@ To ensure your bot restarts automatically if VPS reboots or if it crashes:
 <summary><b>Join Support & Updates Channel</b></summary>
 <br>
 
-<a href="https://t.me/O_P_Hacker"><img src="https://img.shields.io/badge/Join-Telegram%20Channel-red.svg?logo=Telegram"></a>
+<a href="https://t.me/OP_SUPPORTS"><img src="https://img.shields.io/badge/Join-Telegram%20Channel-red.svg?logo=Telegram"></a>
 <a href="https://t.me/legend_of_all_groups"><img src="https://img.shields.io/badge/Join-Support%20Group-blue.svg?logo=Telegram"></a>
 
 </details>
