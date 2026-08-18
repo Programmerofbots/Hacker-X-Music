@@ -436,6 +436,11 @@ class YouTubeAPI:
                 "nocheckcertificate": True,
                 "quiet": True,
                 "no_warnings": True,
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["android", "ios", "web"]
+                    }
+                },
             }
             return _run_ydl_with_retry(base_opts, link)
 
@@ -447,6 +452,11 @@ class YouTubeAPI:
                 "nocheckcertificate": True,
                 "quiet": True,
                 "no_warnings": True,
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["android", "ios", "web"]
+                    }
+                },
             }
             return _run_ydl_with_retry(base_opts, link)
 
@@ -462,6 +472,11 @@ class YouTubeAPI:
                 "no_warnings": True,
                 "prefer_ffmpeg": True,
                 "merge_output_format": "mp4",
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["android", "ios", "web"]
+                    }
+                },
                 **cookies_opt(),
             }
             x = yt_dlp.YoutubeDL(ydl_optssx)
@@ -484,6 +499,11 @@ class YouTubeAPI:
                         "preferredquality": "192",
                     }
                 ],
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["android", "ios", "web"]
+                    }
+                },
                 **cookies_opt(),
             }
             x = yt_dlp.YoutubeDL(ydl_optssx)
@@ -507,6 +527,8 @@ class YouTubeAPI:
                     "-g",
                     "-f",
                     "best[height<=?720][width<=?1280]",
+                    "--extractor-args",
+                    "youtube:player_client=android,ios,web",
                     *cookies_cli_args(),
                     f"{link}",
                     stdout=asyncio.subprocess.PIPE,
