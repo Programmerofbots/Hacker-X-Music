@@ -1,3 +1,4 @@
+import asyncio
 from pyrogram import Client, errors
 from pyrogram.enums import ChatMemberStatus, ParseMode
 
@@ -20,7 +21,14 @@ class Anony(Client):
         )
 
     async def start(self):
-        await super().start()
+        try:
+            await super().start()
+        except errors.FloodWait as e:
+            LOGGER(__name__).warning(
+                f"Telegram FloodWait: Required wait of {e.value}s ({round(e.value / 60, 1)}m). Sleeping before retry..."
+            )
+            await asyncio.sleep(e.value + 2)
+            await super().start()
         self.id = self.me.id
         self.name = self.me.first_name + " " + (self.me.last_name or "")
         self.username = self.me.username

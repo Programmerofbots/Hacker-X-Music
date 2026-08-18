@@ -1,4 +1,5 @@
-from pyrogram import Client
+import asyncio
+from pyrogram import Client, errors
 
 import config
 
@@ -46,10 +47,20 @@ class Userbot(Client):
             no_updates=True,
         )
 
+    async def _start_client(self, client: Client, name: str):
+        try:
+            await client.start()
+        except errors.FloodWait as e:
+            LOGGER(__name__).warning(
+                f"Telegram FloodWait for {name}: Required wait of {e.value}s ({round(e.value / 60, 1)}m). Sleeping..."
+            )
+            await asyncio.sleep(e.value + 2)
+            await client.start()
+
     async def start(self):
         LOGGER(__name__).info(f"Starting Assistants...")
         if config.STRING1:
-            await self.one.start()
+            await self._start_client(self.one, "Assistant 1")
             try:
                 await self.one.join_chat("O_P_Hacker")
                 await self.one.join_chat("Hacker_fed")
@@ -70,7 +81,7 @@ class Userbot(Client):
             LOGGER(__name__).info(f"Assistant Started as {self.one.name}")
 
         if config.STRING2:
-            await self.two.start()
+            await self._start_client(self.two, "Assistant 2")
             try:
                 await self.two.join_chat("O_P_Hacker")
                 await self.one.join_chat("Hacker_fed")
@@ -91,7 +102,7 @@ class Userbot(Client):
             LOGGER(__name__).info(f"Assistant Two Started as {self.two.name}")
 
         if config.STRING3:
-            await self.three.start()
+            await self._start_client(self.three, "Assistant 3")
             try:
                 await self.three.join_chat("O_P_Hacker")
                 await self.one.join_chat("Hacker_fed")
@@ -112,7 +123,7 @@ class Userbot(Client):
             LOGGER(__name__).info(f"Assistant Three Started as {self.three.name}")
 
         if config.STRING4:
-            await self.four.start()
+            await self._start_client(self.four, "Assistant 4")
             try:
                 await self.four.join_chat("O_P_Hacker")
                 await self.one.join_chat("Hacker_fed")
@@ -133,7 +144,7 @@ class Userbot(Client):
             LOGGER(__name__).info(f"Assistant Four Started as {self.four.name}")
 
         if config.STRING5:
-            await self.five.start()
+            await self._start_client(self.five, "Assistant 5")
             try:
                 await self.five.join_chat("O_P_Hacker")
                 await self.one.join_chat("Hacker_fed")

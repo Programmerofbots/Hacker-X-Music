@@ -11,10 +11,19 @@ downloads/
 
 # Environments & sensitive files
 .env
+.env.*
 .venv
 env/
 venv/
 ENV/
+
+# ── SECURITY: Cookie files (contain real session tokens!) ──
+cookies.txt
+cookies*.txt
+cookie*.txt
+
+# ── SECURITY: Debug/scratch artifacts ──
+shizu_tree.json
 
 # Telegram / Telethon / Pyrogram sessions & temporary files
 *.session

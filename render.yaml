@@ -23,5 +23,7 @@ services:
         sync: false
       - key: YOUTUBE_API_KEY
         sync: false
+      - key: ARC_API_KEY
+        sync: false
       - key: COOKIES_DIR
         value: .

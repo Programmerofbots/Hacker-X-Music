@@ -446,80 +446,54 @@ class YouTubeAPI:
             link = self.base + link
         loop = asyncio.get_running_loop()
 
-        def audio_dl():
-            base_opts = {
-                "format": "bestaudio/best/ba/b",
-                "outtmpl": "downloads/%(id)s.%(ext)s",
-                "geo_bypass": True,
-                "nocheckcertificate": True,
-                "quiet": True,
-                "no_warnings": True,
-            }
-            return _run_ydl_with_retry(base_opts, link)
-
-        def video_dl():
-            base_opts = {
-                "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio[ext=m4a])/best[height<=?720]/best",
-                "outtmpl": "downloads/%(id)s.%(ext)s",
-                "geo_bypass": True,
-                "nocheckcertificate": True,
-                "quiet": True,
-                "no_warnings": True,
-            }
-            return _run_ydl_with_retry(base_opts, link)
-
-        def song_video_dl():
-            formats = f"{format_id}+140/best"
-            fpath = f"downloads/{title}"
-            ydl_optssx = {
-                "format": formats,
-                "outtmpl": fpath,
-                "geo_bypass": True,
-                "nocheckcertificate": True,
-                "quiet": True,
-                "no_warnings": True,
-                "prefer_ffmpeg": True,
-                "merge_output_format": "mp4",
-                **cookies_opt(),
-            }
-            x = yt_dlp.YoutubeDL(ydl_optssx)
-            x.download([link])
-
-        def song_audio_dl():
-            fpath = f"downloads/{title}.%(ext)s"
-            ydl_optssx = {
-                "format": f"{format_id}/bestaudio/best/ba/b",
-                "outtmpl": fpath,
-                "geo_bypass": True,
-                "nocheckcertificate": True,
-                "quiet": True,
-                "no_warnings": True,
-                "prefer_ffmpeg": True,
-                "postprocessors": [
-                    {
-                        "key": "FFmpegExtractAudio",
-                        "preferredcodec": "mp3",
-                        "preferredquality": "192",
-                    }
-                ],
-                **cookies_opt(),
-            }
-            x = yt_dlp.YoutubeDL(ydl_optssx)
-            x.download([link])
-
+        # ── songvideo / songaudio (specific format_id download — use yt-dlp directly) ──
         if songvideo:
+            def song_video_dl():
+                fpath = f"downloads/{title}"
+                opts = {
+                    "format": f"{format_id}+140/best",
+                    "outtmpl": fpath,
+                    "geo_bypass": True,
+                    "nocheckcertificate": True,
+                    "quiet": True,
+                    "no_warnings": True,
+                    "prefer_ffmpeg": True,
+                    "merge_output_format": "mp4",
+                    **cookies_opt(),
+                }
+                yt_dlp.YoutubeDL(opts).download([link])
+
             await loop.run_in_executor(None, song_video_dl)
-            fpath = f"downloads/{title}.mp4"
-            return fpath
+            return f"downloads/{title}.mp4"
+
         elif songaudio:
+            def song_audio_dl():
+                fpath = f"downloads/{title}.%(ext)s"
+                opts = {
+                    "format": f"{format_id}/bestaudio/best/ba/b",
+                    "outtmpl": fpath,
+                    "geo_bypass": True,
+                    "nocheckcertificate": True,
+                    "quiet": True,
+                    "no_warnings": True,
+                    "prefer_ffmpeg": True,
+                    "postprocessors": [
+                        {
+                            "key": "FFmpegExtractAudio",
+                            "preferredcodec": "mp3",
+                            "preferredquality": "192",
+                        }
+                    ],
+                    **cookies_opt(),
+                }
+                yt_dlp.YoutubeDL(opts).download([link])
+
             await loop.run_in_executor(None, song_audio_dl)
-            fpath = f"downloads/{title}.mp3"
-            return fpath
+            return f"downloads/{title}.mp3"
+
+        # ── video streaming URL (direct URL mode, no download) ──
         elif video:
-            if await is_on_off(1):
-                direct = True
-                downloaded_file = await loop.run_in_executor(None, video_dl)
-            else:
+            if not await is_on_off(1):
                 proc = await asyncio.create_subprocess_exec(
                     "yt-dlp",
                     "-g",
@@ -532,11 +506,20 @@ class YouTubeAPI:
                 )
                 stdout, stderr = await proc.communicate()
                 if stdout:
-                    downloaded_file = stdout.decode().split("\n")[0]
-                    direct = None
-                else:
-                    return
+                    return stdout.decode().split("\n")[0], None
+                # URL fetch failed — fall through to smart download
+
+            # Smart download: ArcMusic → Shruti → yt-dlp
+            from AnonXMusic.utils.musicapi import smart_download
+            downloaded_file = await smart_download(link, is_video=True)
+            if downloaded_file:
+                return downloaded_file, True
+            return None, None
+
+        # ── audio (default) — Smart download: ArcMusic → Shruti → yt-dlp ──
         else:
-            direct = True
-            downloaded_file = await loop.run_in_executor(None, audio_dl)
-        return downloaded_file, direct
+            from AnonXMusic.utils.musicapi import smart_download
+            downloaded_file = await smart_download(link, is_video=False)
+            if downloaded_file:
+                return downloaded_file, True
+            return None, None

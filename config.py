@@ -16,7 +16,7 @@ BOT_TOKEN = getenv("BOT_TOKEN")
 # Get your mongo url from cloud.mongodb.com
 MONGO_DB_URI = getenv("MONGO_DB_URI", None)
 
-DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", 1000))
+DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", 99999))
 
 # Chat id of a group for logging bot's activities
 LOGGER_ID = int(getenv("LOGGER_ID", None))
@@ -59,6 +59,19 @@ COOKIES_DIR = getenv("COOKIES_DIR", ".")
 # Optional YouTube Data API v3 key (console.cloud.google.com). When set,
 # search/details use the official API with automatic fallback to scraping.
 YOUTUBE_API_KEY = getenv("YOUTUBE_API_KEY", None)
+
+# ── Music Download APIs (Auto-Fallback: ArcMusic → Shruti → yt-dlp) ──────────
+# ArcMusic API — get your key from https://portal.arcmusic.fun/
+# Register at the portal and set ARC_API_KEY in Render environment variables.
+ARC_API_URL = getenv("ARC_API_URL", "https://api.arcmusic.fun")
+ARC_API_KEY = getenv("ARC_API_KEY", "")
+
+# Shruti API — default key works, or get your own from @SHRUTIAPIBOT on Telegram
+SHRUTI_API_URL = getenv("SHRUTI_API_URL", "https://api.shrutibots.site")
+SHRUTI_API_KEY = getenv("SHRUTI_API_KEY", "ShrutiBotsFILhdYW5B1AVMsQsPi0W")
+
+# Timeout in seconds for API stream downloads (15 min default — supports long songs)
+MUSIC_API_TIMEOUT = int(getenv("MUSIC_API_TIMEOUT", 900))
 
 
 # Maximum limit for fetching playlist's track from youtube, spotify, apple links.

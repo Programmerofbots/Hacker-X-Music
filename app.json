@@ -56,6 +56,11 @@
         "description": "Your Log Group ID, add your bot and promote as an admin with full rights!. Channel ki id mat daal dena bsdk.",
         "value": "",
         "required": true
+      },
+      "ARC_API_KEY": {
+        "description": "ArcMusic API key — register at https://portal.arcmusic.fun/ to get your key. Enables fast music downloads without yt-dlp.",
+        "value": "",
+        "required": false
       }
     },
     "buildpacks": [
