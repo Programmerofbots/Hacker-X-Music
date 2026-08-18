@@ -44,8 +44,19 @@ if YOUTUBE_API_KEY:
 
 def _cookie_pool() -> list:
     """All cookie files currently available, e.g. ['cookies.txt', 'cookies1.txt', ...]."""
-    files = sorted(glob.glob(os.path.join(COOKIES_DIR, "cookies*.txt")))
-    return [f for f in files if os.path.isfile(f) and os.path.getsize(f) > 0]
+    cookies_dir = os.getenv("COOKIES_DIR", ".")
+    found = []
+    for pat in ["cookies*.txt", "cookie*.txt", "*.txt"]:
+        for f in glob.glob(os.path.join(cookies_dir, pat)):
+            if os.path.isfile(f) and os.path.getsize(f) > 10 and "requirement" not in f.lower():
+                abs_f = os.path.abspath(f)
+                if abs_f not in found:
+                    found.append(abs_f)
+    if os.path.isfile("cookies.txt"):
+        abs_c = os.path.abspath("cookies.txt")
+        if abs_c not in found and os.path.getsize(abs_c) > 10:
+            found.append(abs_c)
+    return found
 
 
 def _pick_cookie_file() -> Union[str, None]:
