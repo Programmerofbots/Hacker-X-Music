@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+downloads/
+*.egg-info/
+
+# Environments & sensitive files
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Telegram / Telethon / Pyrogram sessions & temporary files
+*.session
+*.session-journal
+cache/
+downloads/
+*.log
+.DS_Store
+Thumbs.db
