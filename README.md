@@ -9,8 +9,9 @@
 ---
 
 ## 📋 Table of Contents
-- [Requirements / Prerequisite](#-requirements)
-- [Deploy on VPS (Step by Step)](#-deploy-on-vps-recommended)
+- [Requirements / Prerequisites](#-requirements)
+- [Deploy on Render (1-Click & Free)](#-deploy-on-render-free)
+- [Deploy on VPS (Step by Step - Recommended)](#-deploy-on-vps-recommended)
   - [Method 1: Manual Setup with screen (24/7 Running)](#method-1-manual-setup-using-screen-recommended)
   - [Method 2: Quick Automated Setup](#method-2-quick-setup-using-setup-script)
   - [Method 3: Systemd Service (Auto-Start on Boot)](#method-3-systemd-service-auto-restart--boot)
@@ -23,14 +24,44 @@
 
 ## 🛠 Requirements
 
-Before deploying, ensure you have:
-1. **Linux VPS** (Ubuntu 20.04 / 22.04 / 24.04 or Debian recommended).
-2. **API_ID & API_HASH** — Obtain from [my.telegram.org](https://my.telegram.org).
-3. **BOT_TOKEN** — Obtain from [@BotFather](https://t.me/BotFather).
-4. **MONGO_DB_URI** — MongoDB database connection string from [MongoDB Atlas](https://www.mongodb.com/).
-5. **STRING_SESSION** — Pyrogram v2 String Session (generate using string generator bot or script).
-6. **OWNER_ID** — Your Telegram User ID (get from [@MissRose_bot](https://t.me/MissRose_bot) using `/id`).
-7. **LOGGER_ID** — Telegram Group/Channel ID (with `-100...`) where bot logs events.
+Before deploying, make sure you have:
+1. **API_ID & API_HASH** — Obtain from [my.telegram.org](https://my.telegram.org).
+2. **BOT_TOKEN** — Obtain from [@BotFather](https://t.me/BotFather).
+3. **MONGO_DB_URI** — MongoDB database connection string from [MongoDB Atlas](https://www.mongodb.com/).
+4. **STRING_SESSION** — Pyrogram v2 String Session (generate using string generator bot or script).
+5. **OWNER_ID** — Your Telegram User ID (get from [@MissRose_bot](https://t.me/MissRose_bot) using `/id`).
+6. **LOGGER_ID** — Telegram Group/Channel ID (with `-100...`) where bot logs events.
+
+---
+
+## 🟣 Deploy on Render (Free)
+
+You can easily deploy **Hacker-X-Music** to **Render** in 1-Click:
+
+<h3 align="center">
+    ─「 𝐃𝐄𝐏𝐋𝐎𝐘 𝐎𝐍 𝐑𝐄𝐍𝐃𝐄𝐑 」─
+</h3>
+
+<p align="center">
+  <a href="https://render.com/deploy?repo=https://github.com/bindplant123/Hacker-X-Music">
+    <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" width="220"/>
+  </a>
+</p>
+
+### Steps to Deploy on Render:
+1. Click the **Deploy to Render** button above (or open [dashboard.render.com](https://dashboard.render.com)).
+2. Sign in or create a Render account.
+3. Fill in your environment variables (`API_ID`, `API_HASH`, `BOT_TOKEN`, `OWNER_ID`, `MONGO_DB_URI`, `LOGGER_ID`, `STRING_SESSION`).
+4. Click **Apply / Create Web Service**.
+5. Render will automatically build the Docker container and start your bot!
+
+> [!TIP]
+> **Keep Render 24/7 Alive (No Sleep Mode):**
+> Render free web services go to sleep after 15 minutes of inactivity. 
+> To keep your bot running 24/7:
+> 1. Copy your Render web service URL (e.g., `https://hacker-x-music.onrender.com`).
+> 2. Open [UptimeRobot.com](https://uptimerobot.com) (Free).
+> 3. Add a new **HTTP(s)** monitor pointing to your Render URL with a **5-minute interval**.
 
 ---
 
@@ -124,7 +155,7 @@ To ensure your bot restarts automatically if VPS reboots or if it crashes:
    ```bash
    sudo nano /etc/systemd/system/musicbot.service
    ```
-2. Paste the following configuration (replace `YOUR_USERNAME` with your VPS username, e.g. `root` or `ubuntu`):
+2. Paste the following configuration:
    ```ini
    [Unit]
    Description=Hacker-X-Music Telegram Bot
