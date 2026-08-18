@@ -21,5 +21,7 @@ services:
         sync: false
       - key: STRING_SESSION
         sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
       - key: COOKIES_DIR
         value: .

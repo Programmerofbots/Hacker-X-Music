@@ -243,6 +243,9 @@ class YouTubeAPI:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
+        api_results = await _api_search(link, limit=1)
+        if api_results:
+            return api_results[0]["title"]
         results = VideosSearch(link, limit=1)
         for result in (await results.next())["result"]:
             title = result["title"]
@@ -253,6 +256,9 @@ class YouTubeAPI:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
+        api_results = await _api_search(link, limit=1)
+        if api_results:
+            return api_results[0]["duration"]
         results = VideosSearch(link, limit=1)
         for result in (await results.next())["result"]:
             duration = result["duration"]
@@ -263,6 +269,9 @@ class YouTubeAPI:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
+        api_results = await _api_search(link, limit=1)
+        if api_results:
+            return api_results[0]["thumbnails"][0]["url"].split("?")[0]
         results = VideosSearch(link, limit=1)
         for result in (await results.next())["result"]:
             thumbnail = result["thumbnails"][0]["url"].split("?")[0]
@@ -314,6 +323,17 @@ class YouTubeAPI:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
+        api_results = await _api_search(link, limit=1)
+        if api_results:
+            result = api_results[0]
+            track_details = {
+                "title": result["title"],
+                "link": result["link"],
+                "vidid": result["id"],
+                "duration_min": result["duration"],
+                "thumb": result["thumbnails"][0]["url"].split("?")[0],
+            }
+            return track_details, result["id"]
         results = VideosSearch(link, limit=1)
         for result in (await results.next())["result"]:
             title = result["title"]
@@ -376,6 +396,15 @@ class YouTubeAPI:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
+        api_results = await _api_search(link, limit=10)
+        if api_results and len(api_results) > query_type:
+            result = api_results[query_type]
+            return (
+                result["title"],
+                result["duration"],
+                result["thumbnails"][0]["url"].split("?")[0],
+                result["id"],
+            )
         a = VideosSearch(link, limit=10)
         result = (await a.next()).get("result")
         title = result[query_type]["title"]
