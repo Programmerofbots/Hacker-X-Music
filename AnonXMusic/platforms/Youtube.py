@@ -68,19 +68,26 @@ def cookies_cli_args() -> list:
 
 
 def _run_ydl_with_retry(base_opts: dict, link: str):
-    """Extract/download via yt-dlp, retrying with a different cookie file from
-    the pool if the current one fails (expired/blocked/rate-limited). Tries
-    every cookie in the pool (in random order) before giving up, so a single
-    bad cookie file never takes the bot down as long as at least one other
-    file in the pool still works."""
+    """Extract/download via yt-dlp, retrying with multiple client strategies and
+    cookie combinations so errors like 'page needs to be reloaded' or IP blocks
+    automatically fail over to working clients (ios, tv_embedded, mweb, web)."""
     pool = _cookie_pool()
-    attempts = list(pool) if pool else [None]
-    random.shuffle(attempts)
+    strategies = []
+    for c in pool:
+        strategies.append((c, None))
+        strategies.append((c, ["ios", "mweb"]))
+        strategies.append((c, ["tv_embedded", "mweb"]))
+    strategies.append((None, ["ios", "mweb"]))
+    strategies.append((None, ["tv_embedded", "mweb"]))
+    strategies.append((None, None))
+
     last_err = None
-    for cookie_file in attempts:
+    for cookie_file, client in strategies:
         opts = dict(base_opts)
         if cookie_file:
             opts["cookiefile"] = cookie_file
+        if client:
+            opts["extractor_args"] = {"youtube": {"player_client": client}}
         try:
             x = yt_dlp.YoutubeDL(opts)
             info = x.extract_info(link, download=False)
@@ -91,7 +98,7 @@ def _run_ydl_with_retry(base_opts: dict, link: str):
         except Exception as e:
             last_err = e
             continue
-    raise last_err or Exception("yt-dlp failed and no cookies are configured")
+    raise last_err or Exception("yt-dlp failed to download media")
 
 
 def _iso8601_duration_to_min(duration: str) -> str:
