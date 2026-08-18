@@ -28,7 +28,7 @@ ARCMUSIC_API_URL   = os.getenv("ARC_API_URL",    "https://api.arcmusic.fun")
 ARCMUSIC_API_KEY   = os.getenv("ARC_API_KEY",    "")          # get from https://portal.arcmusic.fun/
 
 SHRUTI_API_URL     = os.getenv("SHRUTI_API_URL", "https://api.shrutibots.site")
-SHRUTI_API_KEY     = os.getenv("SHRUTI_API_KEY", "ShrutiBotsFILhdYW5B1AVMsQsPi0W")
+SHRUTI_API_KEY     = os.getenv("SHRUTI_API_KEY", "ShrutiBotsbGoL15gRHVmyN5BBE7DJ")
 
 DOWNLOAD_DIR       = os.getenv("DOWNLOAD_DIR", "downloads")
 API_TIMEOUT        = int(os.getenv("MUSIC_API_TIMEOUT", 900))   # 15 min stream timeout
@@ -115,13 +115,34 @@ async def _arcmusic_poll_job(session: aiohttp.ClientSession, job_id: str) -> Opt
     return None
 
 
+async def _download_telegram_cdn(tg_link: str, path: str) -> Optional[str]:
+    """Download audio directly from Telegram CDN link like https://t.me/ArcAPI_1/1586 using bot client."""
+    try:
+        m = _TG_LINK_RE.match(tg_link)
+        if not m:
+            return None
+        from AnonXMusic import app
+        channel = m.group(2)
+        message_id = int(m.group(3))
+        logger.info(f"[ArcMusic] Downloading Telegram CDN message {message_id} from @{channel}")
+        msg = await app.get_messages(channel, message_id)
+        if msg and (msg.audio or msg.document or msg.video):
+            file_path = await app.download_media(msg, file_name=path)
+            if file_path and _is_cached(file_path):
+                logger.info(f"[ArcMusic] Downloaded via Telegram CDN: {file_path}")
+                return file_path
+    except Exception as e:
+        logger.warning(f"[ArcMusic] Telegram CDN download failed: {e}")
+    return None
+
+
 async def download_via_arcmusic(video_id: str, is_video: bool = False) -> Optional[str]:
     """
     Download audio/video via ArcMusic API.
     Returns local file path on success, None on failure.
     ArcMusic returns either:
       - A direct CDN URL → stream + save locally
-      - A Telegram CDN link → not handled here (falls through to None)
+      - A Telegram CDN link → download via Pyrogram app
       - A job_id → poll until done
     """
     if not ARCMUSIC_API_KEY:
@@ -161,9 +182,12 @@ async def download_via_arcmusic(video_id: str, is_video: bool = False) -> Option
             if cdn:
                 cdn = _normalize_url(cdn, ARCMUSIC_API_URL)
 
-                # Telegram CDN link — not directly streamable here, skip
+                # Telegram CDN link — download via Pyrogram
                 if _TG_LINK_RE.match(cdn):
-                    logger.warning(f"[ArcMusic] Got Telegram CDN link (not supported): {cdn}")
+                    logger.info(f"[ArcMusic] Got Telegram CDN link: {cdn}")
+                    tg_res = await _download_telegram_cdn(cdn, path)
+                    if tg_res:
+                        return tg_res
                     return None
 
                 # Direct stream URL → stream to disk
@@ -197,7 +221,10 @@ async def download_via_arcmusic(video_id: str, is_video: bool = False) -> Option
                 return None
 
             if _TG_LINK_RE.match(cdn):
-                logger.warning(f"[ArcMusic] Job gave Telegram CDN (not supported): {cdn}")
+                logger.info(f"[ArcMusic] Job gave Telegram CDN link: {cdn}")
+                tg_res = await _download_telegram_cdn(cdn, path)
+                if tg_res:
+                    return tg_res
                 return None
 
             # Stream polled CDN to disk

@@ -320,9 +320,8 @@ class Call(PyTgCalls):
             raise AssistantErr(_["call_8"])
         except AlreadyJoinedError:
             raise AssistantErr(_["call_9"])
-        except Exception:
-            # Covers transient Telegram-side call/server errors (the old
-            # TelegramServerError class was removed upstream in py-tgcalls 1.x)
+        except Exception as e:
+            LOGGER(__name__).error(f"Error joining group call in {chat_id}: {type(e).__name__} - {e}")
             raise AssistantErr(_["call_10"])
         await add_active_chat(chat_id)
         await music_on(chat_id)

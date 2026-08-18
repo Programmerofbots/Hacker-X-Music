@@ -68,7 +68,7 @@ ARC_API_KEY = getenv("ARC_API_KEY", "")
 
 # Shruti API — default key works, or get your own from @SHRUTIAPIBOT on Telegram
 SHRUTI_API_URL = getenv("SHRUTI_API_URL", "https://api.shrutibots.site")
-SHRUTI_API_KEY = getenv("SHRUTI_API_KEY", "ShrutiBotsFILhdYW5B1AVMsQsPi0W")
+SHRUTI_API_KEY = getenv("SHRUTI_API_KEY", "ShrutiBotsbGoL15gRHVmyN5BBE7DJ")
 
 # Timeout in seconds for API stream downloads (15 min default — supports long songs)
 MUSIC_API_TIMEOUT = int(getenv("MUSIC_API_TIMEOUT", 900))
