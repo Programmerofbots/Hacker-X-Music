@@ -430,38 +430,28 @@ class YouTubeAPI:
 
         def audio_dl():
             base_opts = {
-                "format": "bestaudio/best",
+                "format": "bestaudio/best/ba/b",
                 "outtmpl": "downloads/%(id)s.%(ext)s",
                 "geo_bypass": True,
                 "nocheckcertificate": True,
                 "quiet": True,
                 "no_warnings": True,
-                "extractor_args": {
-                    "youtube": {
-                        "player_client": ["android", "ios", "web"]
-                    }
-                },
             }
             return _run_ydl_with_retry(base_opts, link)
 
         def video_dl():
             base_opts = {
-                "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio[ext=m4a])",
+                "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio[ext=m4a])/best[height<=?720]/best",
                 "outtmpl": "downloads/%(id)s.%(ext)s",
                 "geo_bypass": True,
                 "nocheckcertificate": True,
                 "quiet": True,
                 "no_warnings": True,
-                "extractor_args": {
-                    "youtube": {
-                        "player_client": ["android", "ios", "web"]
-                    }
-                },
             }
             return _run_ydl_with_retry(base_opts, link)
 
         def song_video_dl():
-            formats = f"{format_id}+140"
+            formats = f"{format_id}+140/best"
             fpath = f"downloads/{title}"
             ydl_optssx = {
                 "format": formats,
@@ -472,11 +462,6 @@ class YouTubeAPI:
                 "no_warnings": True,
                 "prefer_ffmpeg": True,
                 "merge_output_format": "mp4",
-                "extractor_args": {
-                    "youtube": {
-                        "player_client": ["android", "ios", "web"]
-                    }
-                },
                 **cookies_opt(),
             }
             x = yt_dlp.YoutubeDL(ydl_optssx)
@@ -485,7 +470,7 @@ class YouTubeAPI:
         def song_audio_dl():
             fpath = f"downloads/{title}.%(ext)s"
             ydl_optssx = {
-                "format": format_id,
+                "format": f"{format_id}/bestaudio/best/ba/b",
                 "outtmpl": fpath,
                 "geo_bypass": True,
                 "nocheckcertificate": True,
@@ -499,11 +484,6 @@ class YouTubeAPI:
                         "preferredquality": "192",
                     }
                 ],
-                "extractor_args": {
-                    "youtube": {
-                        "player_client": ["android", "ios", "web"]
-                    }
-                },
                 **cookies_opt(),
             }
             x = yt_dlp.YoutubeDL(ydl_optssx)
@@ -526,9 +506,7 @@ class YouTubeAPI:
                     "yt-dlp",
                     "-g",
                     "-f",
-                    "best[height<=?720][width<=?1280]",
-                    "--extractor-args",
-                    "youtube:player_client=android,ios,web",
+                    "best[height<=?720][width<=?1280]/best",
                     *cookies_cli_args(),
                     f"{link}",
                     stdout=asyncio.subprocess.PIPE,
