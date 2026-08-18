@@ -190,6 +190,124 @@ async def shell_cmd(cmd):
     return out.decode("utf-8")
 
 
+async def _universal_search(query: str, limit: int = 1) -> list:
+    """
+    Robust YouTube search with 4-tier fallback:
+      1. Official YouTube Data API v3 (if key provided)
+      2. youtubesearchpython (VideosSearch)
+      3. youtube-search (YoutubeSearch)
+      4. yt-dlp flat search (ytsearch)
+    Returns list of dicts: [{'title': str, 'id': str, 'link': str, 'duration': str, 'thumbnails': [{'url': str}]}]
+    """
+    loop = asyncio.get_running_loop()
+
+    # Tier 1: YouTube Data API v3
+    try:
+        api_res = await _api_search(query, limit=limit)
+        if api_res:
+            return api_res
+    except Exception:
+        pass
+
+    # Tier 2: youtubesearchpython (VideosSearch)
+    try:
+        vs = VideosSearch(query, limit=limit)
+        res = await vs.next()
+        items = res.get("result", []) if isinstance(res, dict) else []
+        if items:
+            out = []
+            for item in items:
+                dur = str(item.get("duration", "0:00"))
+                thumbs = item.get("thumbnails", [{}])
+                thumb_url = thumbs[0].get("url", "").split("?")[0] if thumbs else ""
+                vid = item.get("id", "")
+                if not thumb_url and vid:
+                    thumb_url = f"https://img.youtube.com/vi/{vid}/hqdefault.jpg"
+                out.append({
+                    "title": item.get("title", "Unknown"),
+                    "id": vid,
+                    "link": item.get("link", f"https://www.youtube.com/watch?v={vid}"),
+                    "duration": dur,
+                    "thumbnails": [{"url": thumb_url}],
+                })
+            if out:
+                return out
+    except Exception:
+        pass
+
+    # Tier 3: youtube_search (YoutubeSearch)
+    try:
+        from youtube_search import YoutubeSearch
+
+        def _do_ys():
+            ys = YoutubeSearch(query, max_results=limit).to_dict()
+            if not ys:
+                return []
+            out = []
+            for item in ys:
+                vid = item.get("id", "")
+                dur = str(item.get("duration", "0:00"))
+                thumbs = item.get("thumbnails", [])
+                thumb_url = thumbs[0].split("?")[0] if (thumbs and isinstance(thumbs, list)) else f"https://img.youtube.com/vi/{vid}/hqdefault.jpg"
+                out.append({
+                    "title": item.get("title", "Unknown"),
+                    "id": vid,
+                    "link": f"https://www.youtube.com/watch?v={vid}",
+                    "duration": dur,
+                    "thumbnails": [{"url": thumb_url}],
+                })
+            return out
+
+        ys_res = await loop.run_in_executor(None, _do_ys)
+        if ys_res:
+            return ys_res
+    except Exception:
+        pass
+
+    # Tier 4: yt-dlp flat search
+    try:
+        def _do_ytdlp():
+            opts = {
+                "quiet": True,
+                "no_warnings": True,
+                "extract_flat": True,
+                "skip_download": True,
+                **cookies_opt(),
+            }
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(f"ytsearch{limit}:{query}", download=False)
+                entries = info.get("entries") or []
+                out = []
+                for entry in entries:
+                    if not entry:
+                        continue
+                    vid = entry.get("id", "")
+                    dur_sec = entry.get("duration") or 0
+                    if dur_sec:
+                        m, s = divmod(int(dur_sec), 60)
+                        h, m = divmod(m, 60)
+                        dur_str = f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+                    else:
+                        dur_str = "0:00"
+                    thumb = entry.get("thumbnail") or f"https://img.youtube.com/vi/{vid}/hqdefault.jpg"
+                    out.append({
+                        "title": entry.get("title", "Unknown"),
+                        "id": vid,
+                        "link": f"https://www.youtube.com/watch?v={vid}",
+                        "duration": dur_str,
+                        "thumbnails": [{"url": thumb}],
+                    })
+                return out
+
+        ytdlp_res = await loop.run_in_executor(None, _do_ytdlp)
+        if ytdlp_res:
+            return ytdlp_res
+    except Exception:
+        pass
+
+    return []
+
+
 class YouTubeAPI:
     def __init__(self):
         self.base = "https://www.youtube.com/watch?v="
@@ -235,25 +353,15 @@ class YouTubeAPI:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
-        api_results = await _api_search(link, limit=1)
-        if api_results:
-            result = api_results[0]
-            title = result["title"]
-            duration_min = result["duration"]
-            thumbnail = result["thumbnails"][0]["url"].split("?")[0]
-            vidid = result["id"]
-            duration_sec = 0 if duration_min == "None" else int(time_to_seconds(duration_min))
-            return title, duration_min, duration_sec, thumbnail, vidid
-        results = VideosSearch(link, limit=1)
-        for result in (await results.next())["result"]:
-            title = result["title"]
-            duration_min = result["duration"]
-            thumbnail = result["thumbnails"][0]["url"].split("?")[0]
-            vidid = result["id"]
-            if str(duration_min) == "None":
-                duration_sec = 0
-            else:
-                duration_sec = int(time_to_seconds(duration_min))
+        results = await _universal_search(link, limit=1)
+        if not results:
+            raise Exception(f"No results found for query: {link}")
+        res = results[0]
+        title = res["title"]
+        duration_min = res["duration"]
+        duration_sec = 0 if duration_min == "None" or not duration_min else int(time_to_seconds(duration_min))
+        thumbnail = res["thumbnails"][0]["url"].split("?")[0] if res["thumbnails"] else f"https://img.youtube.com/vi/{res['id']}/hqdefault.jpg"
+        vidid = res["id"]
         return title, duration_min, duration_sec, thumbnail, vidid
 
     async def title(self, link: str, videoid: Union[bool, str] = None):
@@ -261,39 +369,31 @@ class YouTubeAPI:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
-        api_results = await _api_search(link, limit=1)
-        if api_results:
-            return api_results[0]["title"]
-        results = VideosSearch(link, limit=1)
-        for result in (await results.next())["result"]:
-            title = result["title"]
-        return title
+        results = await _universal_search(link, limit=1)
+        if not results:
+            raise Exception(f"No results found for query: {link}")
+        return results[0]["title"]
 
     async def duration(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
-        api_results = await _api_search(link, limit=1)
-        if api_results:
-            return api_results[0]["duration"]
-        results = VideosSearch(link, limit=1)
-        for result in (await results.next())["result"]:
-            duration = result["duration"]
-        return duration
+        results = await _universal_search(link, limit=1)
+        if not results:
+            raise Exception(f"No results found for query: {link}")
+        return results[0]["duration"]
 
     async def thumbnail(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
-        api_results = await _api_search(link, limit=1)
-        if api_results:
-            return api_results[0]["thumbnails"][0]["url"].split("?")[0]
-        results = VideosSearch(link, limit=1)
-        for result in (await results.next())["result"]:
-            thumbnail = result["thumbnails"][0]["url"].split("?")[0]
-        return thumbnail
+        results = await _universal_search(link, limit=1)
+        if not results:
+            raise Exception(f"No results found for query: {link}")
+        res = results[0]
+        return res["thumbnails"][0]["url"].split("?")[0] if res["thumbnails"] else f"https://img.youtube.com/vi/{res['id']}/hqdefault.jpg"
 
     async def video(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
@@ -341,32 +441,19 @@ class YouTubeAPI:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
-        api_results = await _api_search(link, limit=1)
-        if api_results:
-            result = api_results[0]
-            track_details = {
-                "title": result["title"],
-                "link": result["link"],
-                "vidid": result["id"],
-                "duration_min": result["duration"],
-                "thumb": result["thumbnails"][0]["url"].split("?")[0],
-            }
-            return track_details, result["id"]
-        results = VideosSearch(link, limit=1)
-        for result in (await results.next())["result"]:
-            title = result["title"]
-            duration_min = result["duration"]
-            vidid = result["id"]
-            yturl = result["link"]
-            thumbnail = result["thumbnails"][0]["url"].split("?")[0]
+        results = await _universal_search(link, limit=1)
+        if not results:
+            raise Exception(f"No results found for query: {link}")
+        res = results[0]
+        thumb = res["thumbnails"][0]["url"].split("?")[0] if res["thumbnails"] else f"https://img.youtube.com/vi/{res['id']}/hqdefault.jpg"
         track_details = {
-            "title": title,
-            "link": yturl,
-            "vidid": vidid,
-            "duration_min": duration_min,
-            "thumb": thumbnail,
+            "title": res["title"],
+            "link": res["link"],
+            "vidid": res["id"],
+            "duration_min": res["duration"],
+            "thumb": thumb,
         }
-        return track_details, vidid
+        return track_details, res["id"]
 
     async def formats(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
@@ -414,22 +501,13 @@ class YouTubeAPI:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
-        api_results = await _api_search(link, limit=10)
-        if api_results and len(api_results) > query_type:
-            result = api_results[query_type]
-            return (
-                result["title"],
-                result["duration"],
-                result["thumbnails"][0]["url"].split("?")[0],
-                result["id"],
-            )
-        a = VideosSearch(link, limit=10)
-        result = (await a.next()).get("result")
-        title = result[query_type]["title"]
-        duration_min = result[query_type]["duration"]
-        vidid = result[query_type]["id"]
-        thumbnail = result[query_type]["thumbnails"][0]["url"].split("?")[0]
-        return title, duration_min, thumbnail, vidid
+        results = await _universal_search(link, limit=10)
+        if not results:
+            raise Exception(f"No results found for query: {link}")
+        idx = query_type if len(results) > query_type else 0
+        res = results[idx]
+        thumb = res["thumbnails"][0]["url"].split("?")[0] if res["thumbnails"] else f"https://img.youtube.com/vi/{res['id']}/hqdefault.jpg"
+        return res["title"], res["duration"], thumb, res["id"]
 
     async def download(
         self,

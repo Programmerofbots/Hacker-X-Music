@@ -329,7 +329,9 @@ async def play_commnd(
             query = query.replace("-v", "")
         try:
             details, track_id = await YouTube.track(query)
-        except:
+        except Exception as e:
+            from AnonXMusic.logging import LOGGER
+            LOGGER(__name__).error(f"Error searching track for '{query}': {e}")
             return await mystic.edit_text(_["play_3"])
         streamtype = "youtube"
     if str(playmode) == "Direct":
