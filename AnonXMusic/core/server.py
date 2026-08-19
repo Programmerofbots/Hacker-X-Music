@@ -1,4 +1,6 @@
+import asyncio
 import os
+import aiohttp
 from aiohttp import web
 
 from ..logging import LOGGER
@@ -51,7 +53,7 @@ async def root_route_handler(request):
         <div class="card">
             <h1>⚡ HACKER X MUSIC ⚡</h1>
             <p>Telegram Music Bot is Alive & Running smoothly.</p>
-            <div class="badge">● Online</div>
+            <div class="badge">● Online 24/7</div>
         </div>
     </body>
     </html>
@@ -71,27 +73,65 @@ async def health_check(request):
     )
 
 
+async def _keep_alive_task(port: int):
+    # Wait for the bot & web server to finish initialization
+    await asyncio.sleep(20)
+
+    url = (
+        os.getenv("RENDER_EXTERNAL_URL")
+        or os.getenv("KEEP_ALIVE_URL")
+        or os.getenv("APP_URL")
+    )
+    if not url:
+        url = f"http://127.0.0.1:{port}"
+
+    LOGGER("AnonXMusic.keep_alive").info(f"Keep-Alive ping loop active for: {url}")
+
+    async with aiohttp.ClientSession() as session:
+        while True:
+            try:
+                async with session.get(
+                    url, timeout=aiohttp.ClientTimeout(total=15)
+                ) as resp:
+                    LOGGER("AnonXMusic.keep_alive").info(
+                        f"Keep-alive ping sent to {url} [Status: {resp.status}]"
+                    )
+            except Exception as e:
+                LOGGER("AnonXMusic.keep_alive").warning(
+                    f"Keep-alive ping failed for {url}: {e}"
+                )
+            await asyncio.sleep(300)  # Ping every 5 minutes (300 seconds)
+
+
 async def start_web_server():
-    port = os.getenv("PORT")
-    if not port:
-        LOGGER("AnonXMusic.server").info(
-            "PORT environment variable not set. Skipping web server startup."
-        )
-        return None
+    port_str = os.getenv("PORT")
+    if not port_str:
+        if os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_URL"):
+            port_str = "10000"
+        else:
+            LOGGER("AnonXMusic.server").info(
+                "PORT environment variable not set. Skipping web server startup."
+            )
+            return None
 
     try:
+        port = int(port_str)
         app = web.Application()
         app.add_routes(routes)
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, "0.0.0.0", int(port))
+        site = web.TCPSite(runner, "0.0.0.0", port)
         await site.start()
         LOGGER("AnonXMusic.server").info(
             f"Web server successfully started on 0.0.0.0:{port} (Render / Web Service mode)"
         )
+
+        # Start keep-alive loop in background
+        asyncio.create_task(_keep_alive_task(port))
+
         return runner
     except Exception as err:
         LOGGER("AnonXMusic.server").warning(
-            f"Failed to start web server on port {port}: {err}"
+            f"Failed to start web server on port {port_str}: {err}"
         )
         return None
